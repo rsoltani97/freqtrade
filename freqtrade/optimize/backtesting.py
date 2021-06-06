@@ -188,21 +188,28 @@ class Backtesting:
         """
         # Every change to this headers list must evaluate further usages of the resulting tuple
         # and eventually change the constants for indexes at the top
-        headers = ['date', 'buy', 'open', 'close', 'sell', 'low', 'high']
+        n = 4
+        headers = ['date', 'open', 'close', 'low', 'high']
+        for i in range(n):
+            headers.append('buy_{}'.format(i))
+            headers.append('sell_{}'.format(i))
+
         data: Dict = {}
         # Create dict with data
         for pair, pair_data in processed.items():
             if not pair_data.empty:
-                pair_data.loc[:, 'buy'] = 0  # cleanup if buy_signal is exist
-                pair_data.loc[:, 'sell'] = 0  # cleanup if sell_signal is exist
+                for i in range(n):
+                    pair_data.loc[:, 'buy_{}'.format(i)] = 0  # cleanup if buy_signal is exist
+                    pair_data.loc[:, 'sell_{}'.format(i)] = 0  # cleanup if sell_signal is exist
 
             df_analyzed = self.strategy.advise_sell(
                 self.strategy.advise_buy(pair_data, {'pair': pair}), {'pair': pair})[headers].copy()
 
             # To avoid using data from future, we use buy/sell signals shifted
             # from the previous candle
-            df_analyzed.loc[:, 'buy'] = df_analyzed.loc[:, 'buy'].shift(1)
-            df_analyzed.loc[:, 'sell'] = df_analyzed.loc[:, 'sell'].shift(1)
+            for i in range(n):
+                df_analyzed.loc[:, 'buy_{}'.format(i)] = df_analyzed.loc[:, 'buy_{}'.format(i)].shift(1)
+                df_analyzed.loc[:, 'sell_{}'.format(i)] = df_analyzed.loc[:, 'sell_{}'.format(i)].shift(1)
 
             df_analyzed.drop(df_analyzed.head(1).index, inplace=True)
 
@@ -374,7 +381,7 @@ class Backtesting:
         # Use dict of lists with data for performance
         # (looping lists is a lot faster than pandas DataFrames)
         data: Dict = self._get_ohlcv_as_lists(processed)
-
+        # print(data.keys())
         # Indexes per pair, so some pairs are allowed to have a missing start.
         indexes: Dict = defaultdict(int)
         tmp = start_date + timedelta(minutes=self.timeframe_min)
